@@ -53,6 +53,7 @@ graph LR
 
   RAW -->|"SQL"| INF
   DIMC -->|"SQL"| INF
+  DIMO -->|"SQL"| INF
   WX -->|"SQL"| INF
   INF -->|"insert"| PRED
 
