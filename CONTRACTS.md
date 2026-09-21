@@ -38,16 +38,7 @@
 
 Отдельного поля типа инцидента нет, тип закодирован значением: пожар — `Обнаружен дым`, подтопление — `Затоплен`, газ — `Обнаружен газ`, проникновение — `Не замкнут`, `Обнаружено движение`, `Рычаг сдернут`, отказ — `Неисправен`, `Обесточен`, `Отключено устройство`, `Батарея разряжена`.
 
-## Импорт истории: API
-
-Только право `SETTINGS_WRITE` (роль `ADMIN`), CSRF-токен в заголовке `X-XSRF-TOKEN`.
-
-| Запрос | Ответ |
-|---|---|
-| `POST /api/v1/admin/import/journal`, multipart поле `file`, `.csv` или `.xlsx`, до 2 GB | `202` + задача с `jobId`; `400` пустой файл или чужое расширение; `411` без `Content-Length`; `503` + `Retry-After` — очередь заполнена по объёму |
-| `GET /api/v1/admin/import/journal/{jobId}` | `200` задача; `404` нет такой |
-
-Задача (и в `202`, и в `GET`): `jobId` (строкой), `status` (`QUEUED` / `RUNNING` / `SUCCEEDED` / `FAILED`), `fileName`, `user`, `rowsRead`, `rowsStored`, `duplicates`, `unknownChannels`, при ошибке `error`, `failedLine`, `failedEventId`; `createdAt`, `startedAt`, `finishedAt`. Счётчики — по закоммиченным пачкам. Фронт опрашивает `GET` до конечного статуса. Ошибки — `application/problem+json`. XLSX — с HACK-107.
+Импорт истории — `POST /api/v1/admin/import/journal` (роль `ADMIN`, multipart `file`) отвечает `202` с `jobId`, статус задачи — `GET /api/v1/admin/import/journal/{jobId}`.
 
 ## Динамика объёма
 
