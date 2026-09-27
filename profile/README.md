@@ -1,4 +1,5 @@
-# hack-goal-team
+# Сервис прогнозирования инциндентов коллекторов Москвы
+## Команда "/goal", 2026
 
 Пилотная система предиктивной аналитики инженерной инфраструктуры для
 диспетчерской службы «Москоллектор». Система принимает события каналов
@@ -26,7 +27,7 @@ flowchart LR
 
 ## Документация
 
-- [Архитектура и схемы потоков](https://github.com/hack-goal-team/.github/blob/main/ARCHITECTURE.md)
+- [Архитектура и схемы потоков данных](https://github.com/hack-goal-team/.github/blob/main/ARCHITECTURE.md)
 - [Исходные контракты и требования](https://github.com/hack-goal-team/.github/blob/main/CONTRACTS.md)
 - [История архитектурных решений](https://github.com/hack-goal-team/.github/blob/main/DECISIONS.md)
 - [Локальный запуск на Windows, macOS и Linux](https://github.com/hack-goal-team/.github/blob/main/demo/README.md)
