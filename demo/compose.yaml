@@ -1,0 +1,136 @@
+name: moscollector-demo
+
+services:
+  postgres:
+    image: postgres:18
+    environment:
+      POSTGRES_DB: goal
+      POSTGRES_USER: goal
+      POSTGRES_PASSWORD: goal_demo_local
+      TZ: Europe/Moscow
+    volumes:
+      - pgdata:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U goal -d goal"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+  kafka:
+    image: apache/kafka:4.0.0
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_HEAP_OPTS: -Xmx512m -Xms512m
+    volumes:
+      - kafkadata:/var/lib/kafka/data
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9092 >/dev/null 2>&1"]
+      interval: 10s
+      timeout: 10s
+      retries: 30
+      start_period: 30s
+
+  kafka-init:
+    image: apache/kafka:4.0.0
+    depends_on:
+      kafka:
+        condition: service_healthy
+    entrypoint:
+      - /bin/bash
+      - -ec
+      - /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9092 --create --if-not-exists --topic smvu-events --partitions 1 --replication-factor 1
+
+  registry-mock:
+    build: ./backend/mocks/registry
+    environment:
+      REGISTRY_MOCK_DATA: data
+
+  ods-mock:
+    build: ./backend/mocks/ods
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.demo
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka-init:
+        condition: service_completed_successfully
+      registry-mock:
+        condition: service_started
+      ods-mock:
+        condition: service_started
+    environment:
+      DB_URL: jdbc:postgresql://postgres:5432/goal
+      DB_USER: goal
+      DB_PASSWORD: goal_demo_local
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      REGISTRY_BASE_URL: http://registry-mock:8081
+      REGISTRY_SCHEDULE_ENABLED: "true"
+      REGISTRY_SCHEDULE_CRON: "*/30 * * * * *"
+      ODS_BASE_URL: http://ods-mock:8082
+      ODS_SCHEDULE_ENABLED: "false"
+      WEATHER_SCHEDULE_ENABLED: "false"
+      SPRING_PROFILES_ACTIVE: stand
+      STAND_TECHNICIAN_PASSWORD_HASH: "$$2y$$10$$KVF37bbUAj2AuhP6GSXrh.c6jwVbc8zpEwuDnEOQ3QyQVODZiHb1S"
+      STAND_DISPATCHER_PASSWORD_HASH: "$$2y$$10$$KVF37bbUAj2AuhP6GSXrh.c6jwVbc8zpEwuDnEOQ3QyQVODZiHb1S"
+      STAND_CDS_PASSWORD_HASH: "$$2y$$10$$KVF37bbUAj2AuhP6GSXrh.c6jwVbc8zpEwuDnEOQ3QyQVODZiHb1S"
+      STAND_HEAD_PASSWORD_HASH: "$$2y$$10$$KVF37bbUAj2AuhP6GSXrh.c6jwVbc8zpEwuDnEOQ3QyQVODZiHb1S"
+      STAND_ADMIN_PASSWORD_HASH: "$$2y$$10$$KVF37bbUAj2AuhP6GSXrh.c6jwVbc8zpEwuDnEOQ3QyQVODZiHb1S"
+      TZ: Europe/Moscow
+
+  inference-setup:
+    build:
+      context: .
+      dockerfile: Dockerfile.inference-setup
+    depends_on:
+      backend:
+        condition: service_started
+      postgres:
+        condition: service_healthy
+    environment:
+      PGPASSWORD: goal_demo_local
+    restart: "no"
+
+  inference:
+    build: ./ml
+    depends_on:
+      inference-setup:
+        condition: service_completed_successfully
+    environment:
+      PGHOST: postgres
+      PGPORT: 5432
+      PGDATABASE: goal
+      PGUSER: inference
+      PGPASSWORD: inference_demo_local
+      HORIZON_HOURS: 30
+      TZ: Europe/Moscow
+    volumes:
+      - inference-runtime:/app/runtime
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    depends_on:
+      backend:
+        condition: service_started
+    ports:
+      - "127.0.0.1:8088:80"
+
+volumes:
+  pgdata:
+  kafkadata:
+  inference-runtime:
