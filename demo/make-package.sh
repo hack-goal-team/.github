@@ -28,9 +28,18 @@ done
 
 cp "$here/compose.yaml" "$here/Dockerfile.frontend" \
     "$here/Dockerfile.inference-setup" "$here/nginx.conf" \
-    "$here/setup-inference.sh" "$here/.dockerignore" "$package/"
+    "$here/setup-inference.sh" "$here/.dockerignore" \
+    "$here/start.sh" "$here/start.cmd" "$package/"
 cp "$here/Dockerfile.backend" "$package/backend/Dockerfile.demo"
 cp "$here/README.md" "$package/README.md"
+
+python3 - "$package/start.cmd" <<'PY'
+from pathlib import Path
+from sys import argv
+
+path = Path(argv[1])
+path.write_bytes(path.read_bytes().replace(b"\r\n", b"\n").replace(b"\n", b"\r\n"))
+PY
 
 python3 - "$work" "$output" <<'PY'
 from pathlib import Path
