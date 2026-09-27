@@ -51,6 +51,41 @@ services:
       - -ec
       - /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9092 --create --if-not-exists --topic smvu-events --partitions 1 --replication-factor 1
 
+  postgres-smvu:
+    build:
+      context: .
+      dockerfile: Dockerfile.smvu-db
+    environment:
+      POSTGRES_DB: smvu
+      POSTGRES_USER: smvu
+      POSTGRES_PASSWORD: smvu
+      TZ: Europe/Moscow
+    volumes:
+      - smvudata:/var/lib/postgresql
+    healthcheck:
+      # По TCP: во время загрузки дампа временный сервер слушает только сокет.
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U smvu -d smvu"]
+      interval: 5s
+      timeout: 5s
+      retries: 60
+
+  smvu-mock:
+    build: ./backend/mocks/smvu
+    depends_on:
+      postgres-smvu:
+        condition: service_healthy
+      kafka-init:
+        condition: service_completed_successfully
+    environment:
+      PGHOST: postgres-smvu
+      PGDATABASE: smvu
+      PGUSER: smvu
+      PGPASSWORD: smvu
+      SMVU_BOOTSTRAP: kafka:9092
+      SMVU_TOPIC: smvu-events
+      SMVU_START: now
+      TZ: Europe/Moscow
+
   registry-mock:
     build: ./backend/mocks/registry
     environment:
@@ -81,8 +116,8 @@ services:
       REGISTRY_SCHEDULE_ENABLED: "true"
       REGISTRY_SCHEDULE_CRON: "*/30 * * * * *"
       ODS_BASE_URL: http://ods-mock:8082
-      ODS_SCHEDULE_ENABLED: "false"
-      WEATHER_SCHEDULE_ENABLED: "false"
+      ODS_SCHEDULE_ENABLED: "true"
+      WEATHER_SCHEDULE_ENABLED: "true"
       SPRING_PROFILES_ACTIVE: stand
       STAND_TECHNICIAN_PASSWORD_HASH: "$$2y$$10$$KVF37bbUAj2AuhP6GSXrh.c6jwVbc8zpEwuDnEOQ3QyQVODZiHb1S"
       STAND_DISPATCHER_PASSWORD_HASH: "$$2y$$10$$KVF37bbUAj2AuhP6GSXrh.c6jwVbc8zpEwuDnEOQ3QyQVODZiHb1S"
@@ -90,6 +125,16 @@ services:
       STAND_HEAD_PASSWORD_HASH: "$$2y$$10$$KVF37bbUAj2AuhP6GSXrh.c6jwVbc8zpEwuDnEOQ3QyQVODZiHb1S"
       STAND_ADMIN_PASSWORD_HASH: "$$2y$$10$$KVF37bbUAj2AuhP6GSXrh.c6jwVbc8zpEwuDnEOQ3QyQVODZiHb1S"
       TZ: Europe/Moscow
+
+  refresh-sources:
+    image: curlimages/curl:8.16.0
+    depends_on:
+      backend:
+        condition: service_started
+    entrypoint: ["/bin/sh", "/refresh-sources.sh"]
+    volumes:
+      - ./refresh-sources.sh:/refresh-sources.sh:ro
+    restart: "no"
 
   inference-setup:
     build:
@@ -133,4 +178,5 @@ services:
 volumes:
   pgdata:
   kafkadata:
+  smvudata:
   inference-runtime:

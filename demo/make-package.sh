@@ -27,10 +27,15 @@ for repo in backend frontend ml; do
 done
 
 cp "$here/compose.yaml" "$here/Dockerfile.frontend" \
-    "$here/Dockerfile.inference-setup" "$here/nginx.conf" \
+    "$here/Dockerfile.inference-setup" "$here/Dockerfile.smvu-db" "$here/nginx.conf" \
     "$here/setup-inference.sh" "$here/.dockerignore" \
-    "$here/start.sh" "$here/start.cmd" "$package/"
+    "$here/start.sh" "$here/start.cmd" "$here/refresh-sources.sh" "$package/"
 cp "$here/Dockerfile.backend" "$package/backend/Dockerfile.demo"
+
+# Схема мока СМВУ рядом со срезом журнала: образ его базы грузит оба при старте.
+cp -r "$here/smvu" "$package/smvu"
+cp "$package/backend/mocks/smvu/schema.sql" "$package/smvu/01-schema.sql"
+
 cp "$here/README.md" "$package/README.md"
 
 python3 - "$package/start.cmd" <<'PY'

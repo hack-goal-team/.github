@@ -3,7 +3,9 @@ WORKDIR /app
 COPY frontend/package.json frontend/package-lock.json ./
 RUN npm ci
 COPY frontend/ ./
-ENV VITE_API_URL=/api/v1 VITE_USE_MOCK=false
+ENV VITE_API_URL=/api/v1 VITE_USE_MOCK=false \
+    VITE_DEMO_TECHNICIAN_PASSWORD=demo1234 VITE_DEMO_DISPATCHER_PASSWORD=demo1234 \
+    VITE_DEMO_CDS_PASSWORD=demo1234 VITE_DEMO_HEAD_PASSWORD=demo1234
 RUN npm run build
 
 FROM nginx:1.27-alpine
