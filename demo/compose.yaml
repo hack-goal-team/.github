@@ -52,7 +52,9 @@ services:
       - /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9092 --create --if-not-exists --topic smvu-events --partitions 1 --replication-factor 1
 
   postgres-smvu:
-    image: postgres:18
+    build:
+      context: .
+      dockerfile: Dockerfile.smvu-db
     environment:
       POSTGRES_DB: smvu
       POSTGRES_USER: smvu
@@ -60,7 +62,6 @@ services:
       TZ: Europe/Moscow
     volumes:
       - smvudata:/var/lib/postgresql
-      - ./smvu:/docker-entrypoint-initdb.d:ro
     healthcheck:
       # По TCP: во время загрузки дампа временный сервер слушает только сокет.
       test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U smvu -d smvu"]

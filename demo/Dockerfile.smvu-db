@@ -1,0 +1,2 @@
+FROM postgres:18
+COPY smvu/ /docker-entrypoint-initdb.d/

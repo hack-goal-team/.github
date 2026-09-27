@@ -11,8 +11,6 @@ if [ -e "$output" ]; then
     echo "Файл уже существует: $output" >&2
     exit 1
 fi
-journal=${SMVU_JOURNAL:?укажи SMVU_JOURNAL=путь/к/ext-journal-2025.csv}
-months=${SMVU_MONTHS:-2025-09,2025-10}
 
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT
@@ -29,25 +27,15 @@ for repo in backend frontend ml; do
 done
 
 cp "$here/compose.yaml" "$here/Dockerfile.frontend" \
-    "$here/Dockerfile.inference-setup" "$here/nginx.conf" \
+    "$here/Dockerfile.inference-setup" "$here/Dockerfile.smvu-db" "$here/nginx.conf" \
     "$here/setup-inference.sh" "$here/.dockerignore" \
     "$here/start.sh" "$here/start.cmd" "$here/refresh-sources.sh" "$package/"
 cp "$here/Dockerfile.backend" "$package/backend/Dockerfile.demo"
 
-# Журнал мока СМВУ: только каналы реестра пакета, исходные метки времени.
-# Postgres мока загружает дамп сам при первом старте тома.
-mkdir "$package/smvu"
+# Схема мока СМВУ рядом со срезом журнала: образ его базы грузит оба при старте.
+cp -r "$here/smvu" "$package/smvu"
 cp "$package/backend/mocks/smvu/schema.sql" "$package/smvu/01-schema.sql"
-channels=$(tail -n +2 "$package/backend/mocks/registry/data/channels.csv" | cut -d, -f1 | paste -sd,)
-{
-    echo "COPY journal (src_ts, event_id, channel_id, is_alarm, raw_value) FROM stdin;"
-    LC_ALL=C awk -F, -v months=",$months," -v channels=",$channels," '
-        index(channels, "," $2 ",") && index(months, "," substr($3, 1, 7) ",") {
-            v = $6; for (i = 7; i <= NF; i++) v = v "," $i
-            print $3 " " $4 "+03" "\t" $1 "\t" $2 "\t" $5 "\t" v
-        }' "$journal"
-    printf '%s\n' '\.' "ANALYZE journal;"
-} | gzip -6 > "$package/smvu/02-journal.sql.gz"
+
 cp "$here/README.md" "$package/README.md"
 
 python3 - "$package/start.cmd" <<'PY'
