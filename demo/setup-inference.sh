@@ -1,14 +1,17 @@
 #!/bin/sh
 set -eu
+# Инцидентной модели нужен снимок прошлых тревог; в пустой базе истории нет,
+# поэтому снимок пустой. На проде его пишет deploy/restore-journal-alarm.sh.
 
 attempt=0
 while [ "$attempt" -lt 90 ]; do
     ready=$(psql -h postgres -U goal -d goal -Atqc \
-        "SELECT EXISTS(SELECT 1 FROM pg_roles WHERE rolname = 'inference')::int * EXISTS(SELECT 1 FROM dim_channels_current)::int" \
+        "SELECT EXISTS(SELECT 1 FROM pg_roles WHERE rolname = 'inference')::int * EXISTS(SELECT 1 FROM dim_channels_current)::int * EXISTS(SELECT 1 FROM alarm_backfill)::int" \
         2>/dev/null || true)
     if [ "$ready" = 1 ]; then
         psql -h postgres -U goal -d goal -v ON_ERROR_STOP=1 \
-            -c "ALTER ROLE inference LOGIN PASSWORD 'inference_demo_local'"
+            -c "ALTER ROLE inference LOGIN PASSWORD 'inference_demo_local'" \
+            -c "INSERT INTO incident_history_checkpoint VALUES (1, now(), '{}') ON CONFLICT (id) DO NOTHING"
         exit 0
     fi
     attempt=$((attempt + 1))
