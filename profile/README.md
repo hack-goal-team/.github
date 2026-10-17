@@ -6,6 +6,14 @@
 датчиков, рассчитывает прогноз риска и показывает диспетчеру историю
 прогнозов и принятых решений.
 
+## Демо
+
+[![Демо стенда: журнал прогнозов, карточка, иерархия объектов, аналитика](https://github.com/hack-goal-team/.github/raw/main/profile/media/demo.gif)](https://github.com/hack-goal-team/.github/blob/main/profile/media/demo.mp4)
+
+Видео на 53 секунды (без звука, ускорение 1.5x): журнал прогнозов высокого риска,
+уведомление в реальном времени, карточка с факторами, иерархия объектов и
+аналитическая панель. [Открыть видео](https://github.com/hack-goal-team/.github/blob/main/profile/media/demo.mp4).
+
 ```mermaid
 flowchart LR
   source["События датчиков<br/>и справочники"] --> backend["backend<br/>приём и API"]
